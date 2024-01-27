@@ -35,7 +35,7 @@ async function getTokenDetails(mintAddress, retries = 0) {
       for (let token of tokens) {
         if (token.address === mintAddress) {
           // Make this log happen every time
-          console.log(`🚀 Token Name: ${token.name}, Token Symbol: ${token.symbol}`);
+          console.log(`Token Name: ${token.name}, Token Symbol: ${token.symbol}`);
           tokenDetailsCache[mintAddress] = { name: token.name, symbol: token.symbol };
           log(`Caching token details for mint address: ${mintAddress}`);
           return tokenDetailsCache[mintAddress];

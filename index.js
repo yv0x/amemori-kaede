@@ -2,11 +2,17 @@ const axios = require('axios');
 const fs = require('fs');
 const { Parser } = require('json2csv');
 const getTokenDetails = require('./getTokenDetails'); // Import getTokenList function
+const { fetchTokenPrice, getCoinGeckoId } = require('./geckoAPI'); // Import gecko functions
 
 // Flag to filter out tokens with a balance of 0 or 1
 const filterZeroAndOneBalances = true;
 // Flag to filter out tokens with the name "Unknown"
 const filterUnknownTokens = true;
+// Flag to fetch CoinGecko IDs for tokens
+const fetchCoinGeckoIds = true;
+// Flag to fetch token prices from CoinGecko
+const fetchTokenPrices = true;
+const fetchDate = '2023-12-30'; // Define the date for fetching token prices
 
 async function getAllBalances(addresses) {
 
@@ -46,6 +52,19 @@ async function getAllBalances(addresses) {
           };
         })
     )).filter(token => token !== null); // Filter out null values resulting from "Unknown" tokens
+    // Fetch token prices if the flag is set
+    if (fetchCoinGeckoIds || fetchTokenPrices) {
+      for (let token of tokenBalances) {
+        if (fetchCoinGeckoIds) {
+          const idData = await getCoinGeckoId(token.tokenSymbol);
+          token.coinGeckoId = idData !== "Unknown" ? idData : "Unknown";
+        }
+        if (fetchTokenPrices) {
+          const priceData = await fetchTokenPrice(token.coinGeckoId, fetchDate);
+          token.tokenPrice = priceData !== "Unknown" ? priceData : 0;
+        }
+      }
+    }
   // Get SOL balance
   let solRes = await axios.post('https://api.mainnet-beta.solana.com', {
     jsonrpc: '2.0',
@@ -56,10 +75,15 @@ async function getAllBalances(addresses) {
 
   const solInLamports = solRes.data.result.value;
   const solBalance = [{ mint: 'SOL', tokenAmount: solInLamports / 1_000_000_000, type: 'Native' }];
+    // Add SOL price if the flag is set
+    if (fetchTokenPrices) {
+      const solPriceData = await fetchTokenPrice('solana', fetchDate);
+      solBalance[0].tokenPrice = solPriceData !== "Unknown" ? solPriceData : 0;
+    }
 
   const allBalances = [...tokenBalances, ...solBalance];
 
-  const csvFields = ['mint', 'tokenAmount', 'tokenName', 'tokenSymbol', 'type']; // include tokenName and tokenSymbol
+  const csvFields = ['mint', 'tokenAmount', 'tokenName', 'tokenSymbol', 'type', 'coinGeckoId', 'tokenPrice']; // include coinGeckoId and tokenPrice
   const json2csvParser = new Parser({ csvFields });
   const csvData = json2csvParser.parse(allBalances);
 
