@@ -2,6 +2,9 @@
 const axios = require('axios');
 const logging = false; // Set to true to enable logging, false to disable
 const tokenDetailsCache = {};
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 async function getTokenDetails(mintAddress, retries = 0) {
   function log(...args) {
@@ -30,12 +33,12 @@ async function getTokenDetails(mintAddress, retries = 0) {
   log(`Starting fetch for mint address: ${mintAddress}`);
   tokenDetailsCache[mintAddress] = (async () => {
     try {
-      const response = await axios.get('https://token.jup.ag/all', { timeout: 10000 });
+      const response = await axios.get('https://token.jup.ag/all', { timeout: 5000 });
       const tokens = response.data;
       for (let token of tokens) {
         if (token.address === mintAddress) {
-          // Make this log happen every time
-          console.log(`Token Name: ${token.name}, Token Symbol: ${token.symbol}`);
+          // have this log happen every time
+          console.log(`󰛂 Token Name: ${token.name}, Token Symbol: ${token.symbol}`);
           tokenDetailsCache[mintAddress] = { name: token.name, symbol: token.symbol };
           log(`Caching token details for mint address: ${mintAddress}`);
           return tokenDetailsCache[mintAddress];
@@ -45,17 +48,20 @@ async function getTokenDetails(mintAddress, retries = 0) {
       return tokenDetailsCache[mintAddress];
     } catch (error) {
       if (axios.isCancel(error)) {
+      console.error('An error occurred:', error);
         console.error('Request canceled:', error.message);
-      } else if (error.code === 'ECONNABORTED' || error.code === 'ETIMEOUT') {
-        console.error('Timeout error:', error.message);
-        if (retries < 3) { // Retry up to 3 times
-          log(`Retrying fetch for mint address: ${mintAddress}, retry count: ${retries + 1}`);
+      } else if (error.code === 'ECONNABORTED' || error.code === 'ETIMEOUT' || error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET') {
+        console.error('Network error:', error.message);
+        if (retries < 3) {
+          const retryDelay = Math.pow(2, retries) * 1000; // Exponential backoff formula
+          console.error(`Retrying after ${retryDelay}ms...`);
+          await delay(retryDelay);
           return getTokenDetails(mintAddress, retries + 1);
         } else {
           console.error('Max retries reached for mint address:', mintAddress);
         }
       } else {
-        console.error('An error occurred:', error);
+        console.error('An unexpected error occurred:', error);
       }
       tokenDetailsCache[mintAddress] = { name: 'Unknown', symbol: 'Unknown' };
       return tokenDetailsCache[mintAddress];
