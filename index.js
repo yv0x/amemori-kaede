@@ -9,10 +9,11 @@ const filterZeroAndOneBalances = true;
 // Flag to filter out tokens with the name "Unknown"
 const filterUnknownTokens = true;
 // Flag to fetch CoinGecko IDs for tokens
-const fetchCoinGeckoIds = false;
+const fetchCoinGeckoIds = true;
 // Flag to fetch token prices from CoinGecko
-const fetchTokenPrices = false;
+const fetchTokenPrices = true;
 const fetchDate = '2023-12-30'; // Define the date for fetching token prices
+
 // Helper function to perform API requests with retry on 429 status code
 async function performRequestWithRetry(url, data, retries = 3, backoff = 1000) {
   try {
@@ -68,25 +69,23 @@ async function getAllBalances(addresses) {
         }
       }
       const tokenBalances = (await Promise.all(tokenBalancesPromises)).filter(token => token !== null); // Filter out null values resulting from "Unknown" tokens
-      // Fetch token prices if the flag is set
-        // Fetch token CoinGecko IDs if the flag is set
-        if (fetchCoinGeckoIds) {
-          for (let token of tokenBalances) {
-            if (token.tokenName !== "Unknown") {
-              // Fetch CoinGecko ID
-              token.coinGeckoId = await getCoinGeckoIdByMint(token.tokenSymbol, token.mint) || "Unknown";
-              
-              // Fetch token price if CoinGecko ID is found and fetchTokenPrices flag is set
-              if (fetchTokenPrices && token.coinGeckoId !== "Unknown") {
-                token.tokenPrice = await fetchTokenPrice(token.coinGeckoId, fetchDate) || 0;
-              }
-            } else {
-              token.coinGeckoId = "Unknown";
+      // Fetch token CoinGecko IDs if the flag is set
+      if (fetchCoinGeckoIds) {
+        for (let token of tokenBalances) {
+          if (token.tokenName !== "Unknown") {
+            // Fetch CoinGecko ID
+            token.coinGeckoId = await getCoinGeckoIdByMint(token.tokenSymbol, token.mint) || "Unknown";
+
+            // Fetch token price if CoinGecko ID is found and fetchTokenPrices flag is set
+            if (fetchTokenPrices && token.coinGeckoId !== "Unknown") {
+              token.tokenPrice = await fetchTokenPrice(token.coinGeckoId, fetchDate) || 0;
             }
+          } else {
+            token.coinGeckoId = "Unknown";
           }
         }
+      }
 
-        
       // Get SOL balance
       let solRes = await performRequestWithRetry('https://api.mainnet-beta.solana.com', {
         jsonrpc: '2.0',

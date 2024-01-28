@@ -11,13 +11,22 @@ function delay(ms) {
 
 // Function to get CoinGecko ID from local file
 async function getCoinGeckoId(symbol) {
+  if (!fs.existsSync('coingecko_list.json')) {
+    console.log(`Local file 'coingecko_list.json' not found.`);
+    return
+  }
   const data = JSON.parse(fs.readFileSync('coingecko_list.json', 'utf-8'));
   const token = data.find(token => token.symbol === symbol.toLowerCase());
   console.log(`CoinGecko ID for '${symbol}' is: ${token ? token.id : "Unknown"}`);
   return token ? token.id : "Unknown";
 }
+
 // Function to get CoinGecko ID from local file, correctly this time
 async function getCoinGeckoIdByMint(symbol, address) {
+  if (!fs.existsSync('coingecko_list.json')) {
+    console.log(`Local file 'coingecko_list.json' not found.`);
+    return
+  }
   const data = JSON.parse(fs.readFileSync('coingecko_list.json', 'utf-8'));
   const token = data.find(token => token.platforms && token.platforms.solana === address);
   console.log(`CoinGecko ID for '${symbol}' is: ${token ? token.id : "Unknown"}`);
